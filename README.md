@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-passing-success.svg)](scripts/test-detection.sh)
 
-📖 **[Quick Start](QUICKSTART.md)** | **[Setup Guide](SETUP.md)** | **[Architecture](ARCHITECTURE.md)** | **[Changelog](CHANGELOG.md)**
+📖 **[Quick Start](QUICKSTART.md)** | **[Setup Guide](SETUP.md)** | **[Architecture](ARCHITECTURE.md)** | **[Changelog](CHANGELOG.md)** | **[Dashboards](elasticsearch-kibana/kibana-dashboards/README.md)** | **[Performance](performance-metrics/README.md)**
 
 ---
 
@@ -213,11 +213,12 @@ network-ids-zeek-suricata/
 │   ├── filebeat-config.yml
 │   ├── elasticsearch.yml
 │   ├── kibana.yml
-│   ├── kibana-dashboards/
-│   │   ├── network_overview.ndjson
-│   │   ├── threat_hunting.ndjson
-│   │   └── performance_metrics.ndjson
-│   └── setup-guide.md
+│   └── kibana-dashboards/             # Pre-built dashboards
+│       ├── network_overview.ndjson
+│       ├── threat_detection.ndjson
+│       ├── dns_analysis.ndjson
+│       ├── import-dashboards.sh
+│       └── README.md                  # Dashboard documentation
 │
 ├── threat-hunting/                    # Hunting playbooks
 │   ├── hunting_playbook.md
@@ -228,10 +229,10 @@ network-ids-zeek-suricata/
 │   ├── use_case_4_tls_anomalies.md
 │   └── use_case_5_lateral_movement.md
 │
-├── performance-metrics/               # Benchmarking results
-│   ├── detection_latency_results.csv
-│   ├── false_positive_tuning.md
-│   └── comparison_zeek_vs_suricata.md
+├── performance-metrics/               # Benchmarking & tuning
+│   ├── README.md                      # Performance overview
+│   ├── performance_baseline.md        # Expected metrics
+│   └── collect-metrics.sh             # Automated collection
 │
 ├── sample-traffic/                    # Test PCAP files
 │   ├── malicious.pcap
@@ -295,7 +296,10 @@ network-ids-zeek-suricata/
 | Memory Usage | 12GB | <16GB |
 | Disk I/O | 120 MB/s | <200 MB/s |
 
-*See `performance-metrics/` for detailed benchmarking methodology*
+**📖 Documentation:**
+- [Performance Overview](performance-metrics/README.md) - Metrics collection & analysis
+- [Performance Baseline](performance-metrics/performance_baseline.md) - Expected results by deployment size
+- [Metrics Collection Script](performance-metrics/collect-metrics.sh) - Automated benchmarking
 
 ---
 
