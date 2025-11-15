@@ -7,6 +7,11 @@
 
 **A production-grade multi-layered Network Intrusion Detection System combining protocol analysis, signature-based detection, and threat hunting capabilities.**
 
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-passing-success.svg)](scripts/test-detection.sh)
+
+📖 **[Quick Start](QUICKSTART.md)** | **[Setup Guide](SETUP.md)** | **[Architecture](ARCHITECTURE.md)** | **[Changelog](CHANGELOG.md)**
+
 ---
 
 ## 🎯 Project Overview

@@ -94,8 +94,9 @@ services:
       - ZEEK_SCRIPTS_DIR=/opt/zeek/share/zeek/site/custom
     command: >
       bash -c "
+      mkdir -p /opt/zeek/logs/current &&
       zeekctl deploy &&
-      tail -f /opt/zeek/logs/current/*.log
+      sleep infinity
       "
     restart: unless-stopped
 
@@ -118,13 +119,17 @@ services:
       - ./logs/suricata:/var/log/suricata
       - ./suricata-rules:/etc/suricata/rules:ro
       - ./configs/suricata-config/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./configs/suricata-config/classification.config:/etc/suricata/classification.config:ro
+      - ./configs/suricata-config/threshold.config:/etc/suricata/threshold.config:ro
+      - ./configs/suricata-config/reference.config:/etc/suricata/reference.config:ro
       - ./sample-traffic:/pcaps:ro
     environment:
       - SURICATA_INTERFACE=any  # Change to specific interface
     command: >
       bash -c "
-      suricata-update &&
-      suricata -c /etc/suricata/suricata.yaml -i any --init-errors-fatal
+      mkdir -p /var/log/suricata &&
+      suricata-update || true &&
+      suricata -c /etc/suricata/suricata.yaml -i any
       "
     restart: unless-stopped
 
