@@ -1,0 +1,206 @@
+# ======================== Filebeat Configuration =========================
+#
+# Network IDS Log Shipping Configuration
+# Ships Zeek & Suricata logs to Elasticsearch
+#
+# ============================= Filebeat Inputs =============================
+filebeat.inputs:
+
+# ----------------------------- Zeek Logs Input -----------------------------
+- type: log
+  enabled: true
+  paths:
+    - /var/log/zeek/current/*.log
+    - /var/log/zeek/*.log
+  exclude_files: ['.gz$', 'stats.log', 'stderr.log', 'stdout.log']
+
+  fields:
+    log_type: zeek
+    event.dataset: zeek
+  fields_under_root: true
+
+  # Parse Zeek TSV format
+  json.keys_under_root: false
+  json.add_error_key: true
+
+  # Multiline settings for Zeek logs
+  multiline.type: pattern
+  multiline.pattern: '^#'
+  multiline.negate: true
+  multiline.match: after
+
+  # Document type
+  tags: ["zeek", "network-ids", "protocol-analysis"]
+
+# --------------------------- Suricata Logs Input ---------------------------
+- type: log
+  enabled: true
+  paths:
+    - /var/log/suricata/eve.json
+
+  fields:
+    log_type: suricata
+    event.dataset: suricata
+  fields_under_root: true
+
+  # Parse Suricata EVE JSON
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.message_key: message
+
+  # Document type
+  tags: ["suricata", "network-ids", "signature-detection"]
+
+# ------------------------- Suricata Fast Log Input -------------------------
+- type: log
+  enabled: true
+  paths:
+    - /var/log/suricata/fast.log
+
+  fields:
+    log_type: suricata_fast
+    event.dataset: suricata.fast
+  fields_under_root: true
+
+  tags: ["suricata", "alerts", "fast-log"]
+
+# =========================== Filebeat Modules ==============================
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 30s
+
+# ============================== Processors =================================
+processors:
+  # Add host metadata
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+      geo:
+        name: sensor_location
+        location: "Sydney, AU"
+
+  # Add cloud metadata (if running in cloud)
+  - add_cloud_metadata: ~
+
+  # Add Docker metadata (if running in Docker)
+  - add_docker_metadata: ~
+
+  # Add timestamp
+  - timestamp:
+      field: json.timestamp
+      layouts:
+        - '2006-01-02T15:04:05.999999999Z'
+      test:
+        - '2023-11-15T12:34:56.123456789Z'
+
+  # Enrich with GeoIP data
+  - add_fields:
+      target: ''
+      fields:
+        ecs.version: '8.0.0'
+
+# ====================== Elasticsearch Output ===============================
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: "elastic"
+  password: "changeme"
+
+  # Index naming pattern
+  indices:
+    - index: "zeek-%{[agent.version]}-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "zeek"
+
+    - index: "suricata-%{[agent.version]}-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "suricata"
+
+  # Bulk configuration
+  bulk_max_size: 1000
+  worker: 4
+  compression_level: 3
+
+  # Pipeline configuration
+  pipeline: "filebeat-8.11.0-zeek-conn-pipeline"
+
+# ========================== Kibana Output ==================================
+setup.kibana:
+  host: "http://kibana:5601"
+  username: "elastic"
+  password: "changeme"
+
+# ======================== Index Template ===================================
+setup.template.enabled: true
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+  index.refresh_interval: "30s"
+
+# ===================== Index Lifecycle Management ==========================
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "filebeat"
+setup.ilm.pattern: "{now/d}-000001"
+setup.ilm.policy_name: "filebeat-policy"
+
+# Custom ILM policy
+setup.ilm.policy:
+  phases:
+    hot:
+      actions:
+        rollover:
+          max_size: "5GB"
+          max_age: "1d"
+    warm:
+      min_age: "7d"
+      actions:
+        shrink:
+          number_of_shards: 1
+        forcemerge:
+          max_num_segments: 1
+    delete:
+      min_age: "30d"
+      actions:
+        delete: {}
+
+# ========================== Dashboards =====================================
+setup.dashboards.enabled: true
+setup.dashboards.index: "filebeat-*"
+setup.dashboards.retry.enabled: true
+setup.dashboards.retry.interval: 30s
+
+# ============================= Logging =====================================
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /usr/share/filebeat/logs
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# Enable JSON logging
+logging.json: true
+logging.metrics.enabled: true
+logging.metrics.period: 30s
+
+# ========================= Monitoring ======================================
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: "elastic"
+  password: "changeme"
+
+# ======================== HTTP Endpoint ====================================
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+# ======================= Performance Tuning ================================
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 5s
+
+# Maximum number of events in a single batch
+max_procs: 4

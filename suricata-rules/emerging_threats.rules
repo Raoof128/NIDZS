@@ -1,0 +1,142 @@
+# Emerging Threats - Custom Suricata Rules
+# Network IDS Project - Author: Raouf
+# Detection of current threat landscape patterns
+
+# ===================================================================
+# RANSOMWARE DETECTION
+# ===================================================================
+
+# WannaCry Ransomware
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE WannaCry Ransomware Connection Attempt"; flow:established,to_server; content:"|00 00 00|SMB"; depth:8; content:"|ff 53 4d 42|"; within:4; distance:4; content:"IPC"; distance:0; classtype:trojan-activity; sid:2300001; rev:1;)
+
+# Ryuk Ransomware - Wake-on-LAN Abuse
+alert udp $HOME_NET any -> $HOME_NET 7 (msg:"ET MALWARE Ryuk Ransomware Wake-on-LAN Activity"; content:"|ff ff ff ff ff ff|"; depth:6; threshold:type both,track by_src,count 10,seconds 60; classtype:ransomware; sid:2300002; rev:1;)
+
+# LockBit Ransomware - DNS
+alert dns $HOME_NET any -> any any (msg:"ET MALWARE LockBit Ransomware DNS Query"; dns.query; content:"lockbit"; nocase; classtype:ransomware; sid:2300003; rev:1;)
+
+# REvil/Sodinokibi - TOR Communication
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE REvil/Sodinokibi TOR Communication"; flow:established,to_server; content:".onion"; http_uri; nocase; classtype:ransomware; sid:2300004; rev:1;)
+
+# Generic Ransomware - Bitcoin Payment Page
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"ET MALWARE Ransomware Bitcoin Payment Page Access"; flow:established,to_server; content:"bitcoin"; http_uri; nocase; content:"decrypt"; http_uri; nocase; classtype:ransomware; sid:2300005; rev:1;)
+
+# ===================================================================
+# BOTNET DETECTION
+# ===================================================================
+
+# Emotet Botnet C2
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE Emotet Botnet C2 Checkin"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; content:"|0d 0a|Host|3a 20|"; nocase; pcre:"/^[a-f0-9]{32}$/"; classtype:trojan-activity; sid:2300010; rev:1;)
+
+# TrickBot Botnet
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"ET MALWARE TrickBot C2 SSL Certificate"; flow:established,to_server; ssl_version:tls1.2; ssl_state:server_hello; content:"|55 04 03|"; content:"TrickBot"; within:20; classtype:trojan-activity; sid:2300011; rev:1;)
+
+# Cobalt Strike Beacon - Default User-Agent
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE Cobalt Strike Beacon User-Agent"; flow:established,to_server; content:"User-Agent|3a 20|Mozilla/5.0 (compatible|3b| MSIE"; http_header; pcre:"/User-Agent\x3a\x20Mozilla\/5\.0\s\(compatible;\sMSIE\s\d+\.\d+;\sWindows\sNT\s\d+\.\d+/"; classtype:trojan-activity; sid:2300012; rev:1;)
+
+# Mirai Botnet Scanner
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"ET MALWARE Mirai Botnet Telnet Scan"; flow:to_server,established; content:"|ff fb 01 ff fb 03 ff fc 27|"; depth:9; classtype:trojan-activity; sid:2300013; rev:1;)
+
+# QakBot/Qbot C2 Communication
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"ET MALWARE QakBot C2 Communication"; flow:established,to_server; content:"|16 03|"; depth:2; content:"|01 00 02|"; within:5; byte_test:2,>,200,0,relative; classtype:trojan-activity; sid:2300014; rev:1;)
+
+# Zeus Banking Trojan
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"ET MALWARE Zeus Banking Trojan HTTP POST"; flow:established,to_server; content:"POST"; http_method; content:"/gate.php"; http_uri; nocase; content:"bot_id="; http_client_body; classtype:trojan-activity; sid:2300015; rev:1;)
+
+# ===================================================================
+# COMMAND & CONTROL DETECTION
+# ===================================================================
+
+# Cobalt Strike Beacon - HTTP GET
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE Cobalt Strike Beacon HTTP GET"; flow:established,to_server; content:"GET"; http_method; content:"/"; http_uri; depth:1; urilen:<10; content:"Accept|3a 20|*/*"; http_header; content:!"Referer|3a|"; http_header; classtype:trojan-activity; sid:2300020; rev:1;)
+
+# Meterpreter Reverse HTTPS
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"ET MALWARE Meterpreter Reverse HTTPS Connection"; flow:established,to_server; content:"|16 03|"; depth:2; ssl_version:tls1.0; ssl_state:client_hello; content:"|00 35|"; classtype:trojan-activity; sid:2300021; rev:1;)
+
+# Empire PowerShell C2
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE Empire PowerShell C2 Communication"; flow:established,to_server; content:"GET"; http_method; content:"/admin/get.php"; http_uri; content:"session="; http_uri; content:"Cookie|3a 20|session="; http_header; classtype:trojan-activity; sid:2300022; rev:1;)
+
+# ===================================================================
+# WEB ATTACKS
+# ===================================================================
+
+# SQL Injection - UNION SELECT
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER SQL Injection UNION SELECT Attempt"; flow:established,to_server; content:"union"; http_uri; nocase; content:"select"; http_uri; nocase; distance:0; pcre:"/union.{0,100}select/i"; classtype:web-application-attack; sid:2300030; rev:1;)
+
+# SQL Injection - Error-Based
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER SQL Injection Error-Based Attempt"; flow:established,to_server; content:"'"; http_uri; content:"or"; http_uri; nocase; distance:0; content:"1=1"; http_uri; distance:0; classtype:web-application-attack; sid:2300031; rev:1;)
+
+# XSS Attack - Script Tag
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER XSS Attack Script Tag"; flow:established,to_server; content:"<script"; http_uri; nocase; pcre:"/<script[^>]*>/i"; classtype:web-application-attack; sid:2300032; rev:1;)
+
+# Command Injection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER Command Injection Attempt"; flow:established,to_server; content:"|3b|"; http_uri; content:"/bin/"; http_uri; distance:0; pcre:"/;.{0,20}\/bin\/(bash|sh|nc|cat)/i"; classtype:web-application-attack; sid:2300033; rev:1;)
+
+# Directory Traversal
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER Directory Traversal Attempt"; flow:established,to_server; content:".."; http_uri; pcre:"/\.\.(\/|%2f)/i"; threshold:type threshold,track by_src,count 3,seconds 60; classtype:web-application-attack; sid:2300034; rev:1;)
+
+# Web Shell Upload - PHP
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"ET WEB_SERVER PHP Web Shell Upload Attempt"; flow:established,to_server; content:"POST"; http_method; content:".php"; http_uri; content:"<?php"; http_client_body; content:"system"; http_client_body; distance:0; classtype:web-application-attack; sid:2300035; rev:1;)
+
+# Log4j (Log4Shell) Exploit CVE-2021-44228
+alert http any any -> $HOME_NET any (msg:"ET EXPLOIT Apache Log4j RCE Attempt (CVE-2021-44228)"; flow:established,to_server; content:"${jndi:"; http_header; fast_pattern; pcre:"/\$\{jndi:(ldap|rmi|dns):\/\//i"; classtype:attempted-admin; sid:2300036; rev:2;)
+
+# ===================================================================
+# DATA EXFILTRATION
+# ===================================================================
+
+# Large HTTP Upload
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET POLICY Large HTTP Upload Possible Data Exfiltration"; flow:established,to_server; content:"POST"; http_method; byte_test:4,>,10000000,0,string,dec,relative; threshold:type threshold,track by_src,count 1,seconds 300; classtype:policy-violation; sid:2300040; rev:1;)
+
+# DNS Exfiltration - Long TXT Query
+alert dns $HOME_NET any -> any 53 (msg:"ET POLICY Possible DNS Exfiltration Long TXT Query"; dns.query; content:"|00 10 00 01|"; depth:4; byte_test:2,>,100,0,relative; classtype:policy-violation; sid:2300041; rev:1;)
+
+# FTP Upload to External
+alert ftp-data $HOME_NET any -> $EXTERNAL_NET any (msg:"ET POLICY FTP Upload to External Server"; flow:established,to_server; threshold:type threshold,track by_src,count 1,seconds 60; classtype:policy-violation; sid:2300042; rev:1;)
+
+# ===================================================================
+# CRYPTOCURRENCY MINING
+# ===================================================================
+
+# Cryptocurrency Mining Pool Connection - Stratum Protocol
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE Cryptocurrency Mining Pool Stratum Connection"; flow:established,to_server; content:"{"; content:"\"method\""; distance:0; content:"\"mining.subscribe\""; distance:0; classtype:trojan-activity; sid:2300050; rev:1;)
+
+# XMRig Miner User-Agent
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE XMRig Cryptocurrency Miner User-Agent"; flow:established,to_server; content:"User-Agent|3a 20|XMRig"; http_header; classtype:trojan-activity; sid:2300051; rev:1;)
+
+# ===================================================================
+# RECONNAISSANCE & SCANNING
+# ===================================================================
+
+# Nmap OS Detection
+alert tcp any any -> $HOME_NET any (msg:"ET SCAN Nmap OS Detection Probe"; flags:S; window:1024; tcp.mss:1460; threshold:type threshold,track by_src,count 5,seconds 60; classtype:attempted-recon; sid:2300060; rev:1;)
+
+# Nmap Version Detection
+alert tcp any any -> $HOME_NET any (msg:"ET SCAN Nmap Version Detection"; flow:to_server,established; content:"|0d 0a|"; pcre:"/[\x00-\x1f]/"; threshold:type threshold,track by_src,count 10,seconds 60; classtype:attempted-recon; sid:2300061; rev:1;)
+
+# Masscan Port Scanner
+alert tcp any any -> $HOME_NET any (msg:"ET SCAN Masscan Port Scanner Detected"; flags:S; window:1024; tcp.mss:1460; ttl:64; threshold:type threshold,track by_src,count 20,seconds 10; classtype:attempted-recon; sid:2300062; rev:1;)
+
+# ===================================================================
+# APT & TARGETED ATTACKS
+# ===================================================================
+
+# APT29 (Cozy Bear) - SUNBURST Backdoor
+alert dns $HOME_NET any -> any any (msg:"ET MALWARE SUNBURST Backdoor DNS Query"; dns.query; content:".avsvmcloud.com"; nocase; classtype:trojan-activity; sid:2300070; rev:1;)
+
+# APT28 (Fancy Bear) - Sofacy Malware
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"ET MALWARE APT28 Sofacy HTTP C2"; flow:established,to_server; content:"POST"; http_method; content:"/bitrix/admin/"; http_uri; content:"id="; http_client_body; classtype:trojan-activity; sid:2300071; rev:1;)
+
+# ===================================================================
+# CREDENTIAL ACCESS
+# ===================================================================
+
+# Mimikatz - PtH Attack
+alert smb $HOME_NET any -> $HOME_NET any (msg:"ET MALWARE Possible Mimikatz Pass-the-Hash"; flow:to_server,established; content:"|ff 53 4d 42|"; depth:8; content:"|00 00 00 00|"; distance:0; content:"|00 00 00 00|"; distance:0; classtype:credential-theft; sid:2300080; rev:1;)
+
+# Responder/LLMNR Poisoning
+alert udp $HOME_NET any -> $HOME_NET 5355 (msg:"ET MALWARE LLMNR Poisoning Attempt (Responder)"; content:"|00 01 00 00 00 00 00 00|"; depth:8; threshold:type threshold,track by_src,count 10,seconds 60; classtype:credential-theft; sid:2300081; rev:1;)
+
+# ===================================================================
+# END OF RULES
+# ===================================================================

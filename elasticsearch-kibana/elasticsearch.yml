@@ -1,0 +1,55 @@
+# ======================== Elasticsearch Configuration =========================
+#
+# Network IDS Elasticsearch Configuration
+# Optimized for time-series security data
+#
+# ---------------------------------- Cluster -----------------------------------
+cluster.name: network-ids-cluster
+node.name: elasticsearch-master
+
+# ----------------------------------- Paths ------------------------------------
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# ---------------------------------- Network -----------------------------------
+network.host: 0.0.0.0
+http.port: 9200
+
+# --------------------------------- Discovery ----------------------------------
+discovery.type: single-node
+
+# ---------------------------------- Security ----------------------------------
+xpack.security.enabled: true
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# ---------------------------------- License -----------------------------------
+xpack.license.self_generated.type: basic
+
+# ---------------------------------- Monitoring --------------------------------
+xpack.monitoring.collection.enabled: true
+
+# -------------------------------- Index Settings ------------------------------
+# Optimizations for time-series security data
+action.auto_create_index: true
+action.destructive_requires_name: true
+
+# -------------------------------- Performance ---------------------------------
+# Thread pools optimized for security data ingestion
+thread_pool.write.queue_size: 10000
+thread_pool.search.queue_size: 10000
+
+# Index refresh interval (increase for better indexing performance)
+index.refresh_interval: 30s
+
+# Translog settings for durability vs performance
+index.translog.durability: async
+index.translog.sync_interval: 30s
+
+# -------------------------------- Index Lifecycle -----------------------------
+# Automatically manage index lifecycle
+xpack.ilm.enabled: true
+
+# -------------------------------- Ingest Pipelines ----------------------------
+# Enable ingest node for data preprocessing
+node.ingest: true

@@ -1,0 +1,171 @@
+# Botnet Detection Rules
+# Network IDS Project - Author: Raouf
+# Detection of botnet command & control traffic
+
+# ===================================================================
+# EMOTET BOTNET
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Emotet C2 Communication"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; urilen:<100; content:!"Referer"; http_header; content:!"User-Agent"; http_header; classtype:trojan-activity; sid:2500001; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET Emotet C2 SSL Certificate"; flow:to_server,established; ssl_subject; content:"CN="; pcre:"/CN=[A-Z]{10,}/"; classtype:trojan-activity; sid:2500002; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Emotet Spam Module Communication"; flow:established,to_server; content:"EHLO"; depth:4; content:"MAIL FROM|3a|"; distance:0; threshold:type threshold,track by_src,count 50,seconds 300; classtype:trojan-activity; sid:2500003; rev:1;)
+
+# ===================================================================
+# TRICKBOT BOTNET
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET TrickBot C2 Connection"; flow:to_server,established; content:"|16 03|"; depth:2; ssl_version:tls1.2; ssl_subject; content:"CN="; pcre:"/CN=[a-z0-9]{10,15}\.com/"; classtype:trojan-activity; sid:2500010; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET TrickBot Module Download"; flow:established,to_server; content:"GET"; http_method; content:"/images/"; http_uri; content:".png"; http_uri; content:"!png"; http_server_body; classtype:trojan-activity; sid:2500011; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET TrickBot Banking Module"; flow:established,to_server; content:"/injectDll"; http_uri; classtype:trojan-activity; sid:2500012; rev:1;)
+
+# ===================================================================
+# QAKBOT / QBOT
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET QakBot C2 Check-in"; flow:established,to_server; content:"|16 03 01|"; depth:3; content:"|00 02 00 00|"; within:100; classtype:trojan-activity; sid:2500020; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET QakBot HTTP C2 Communication"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; content:"Cookie|3a 20|"; http_header; pcre:"/Cookie\x3a\x20[a-z]{10,}=[0-9]{10,}/"; classtype:trojan-activity; sid:2500021; rev:1;)
+
+# ===================================================================
+# MIRAI / SATORI BOTNET
+# ===================================================================
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"BOTNET Mirai Telnet Scanner"; flow:to_server,established; content:"|ff fb 01 ff fb 03 ff fc 27|"; depth:9; classtype:trojan-activity; sid:2500030; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET 2323 (msg:"BOTNET Mirai Alternative Telnet Port Scan"; flags:S; threshold:type threshold,track by_dst,count 10,seconds 60; classtype:trojan-activity; sid:2500031; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Mirai C2 Report-in"; flow:established,to_server; dsize:<100; content:"|00 00 00|"; depth:3; threshold:type threshold,track by_src,count 3,seconds 300; classtype:trojan-activity; sid:2500032; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"BOTNET Mirai DDoS Command"; flow:to_client,established; content:"|00 00 00|"; depth:3; content:"udp"; distance:0; classtype:trojan-activity; sid:2500033; rev:1;)
+
+# ===================================================================
+# DRIDEX BANKING TROJAN
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET Dridex Banking Trojan C2"; flow:established,to_server; ssl_version:tls1.2; ssl_subject; content:"CN="; pcre:"/CN=(localhost|server)/i"; classtype:trojan-activity; sid:2500040; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Dridex HTTP C2 POST"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; urilen:1; content:!"User-Agent"; http_header; classtype:trojan-activity; sid:2500041; rev:1;)
+
+# ===================================================================
+# COBALT STRIKE (POST-EXPLOITATION FRAMEWORK)
+# ===================================================================
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Cobalt Strike Beacon Default User-Agent"; flow:established,to_server; content:"User-Agent|3a 20|Mozilla/5.0 (compatible|3b| MSIE"; http_header; pcre:"/User-Agent\x3a\x20Mozilla\/5\.0\s\(compatible;\sMSIE\s\d+\.\d+;\sWindows\sNT\s\d+\.\d+/"; classtype:trojan-activity; sid:2500050; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Cobalt Strike Beacon GET Request"; flow:established,to_server; content:"GET"; http_method; content:"/"; http_uri; depth:1; urilen:<10; content:"Accept|3a 20|*/*"; http_header; content:!"Referer"; http_header; classtype:trojan-activity; sid:2500051; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Cobalt Strike Beacon POST Response"; flow:to_client,established; content:"HTTP/1.1 200"; depth:12; content:"Content-Type|3a 20|application/octet-stream"; http_header; classtype:trojan-activity; sid:2500052; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Cobalt Strike DNS Beacon"; flow:established,to_server; content:"|00 00 10 00 01|"; depth:5; threshold:type threshold,track by_src,count 10,seconds 60; classtype:trojan-activity; sid:2500053; rev:1;)
+
+# ===================================================================
+# METASPLOIT FRAMEWORK
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 4444 (msg:"BOTNET Metasploit Meterpreter Reverse TCP Default Port"; flow:to_server,established; threshold:type threshold,track by_src,count 1,seconds 60; classtype:trojan-activity; sid:2500060; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Meterpreter Reverse HTTPS Connection"; flow:to_server,established; content:"|16 03|"; depth:2; ssl_version:tls1.0; content:"|00 35|"; within:100; classtype:trojan-activity; sid:2500061; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Metasploit User-Agent"; flow:established,to_server; content:"User-Agent|3a 20|"; http_header; pcre:"/User-Agent\x3a\x20(Mozilla\/4\.0\s\(compatible;\sMSIE\s6\.0|DotNet)/"; classtype:trojan-activity; sid:2500062; rev:1;)
+
+# ===================================================================
+# ZEUS / ZBOT
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"BOTNET Zeus Banking Trojan C2 POST"; flow:established,to_server; content:"POST"; http_method; content:"/gate.php"; http_uri; nocase; content:"bot_id="; http_client_body; classtype:trojan-activity; sid:2500070; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"BOTNET Zeus Config Download"; flow:established,to_server; content:"GET"; http_method; content:"/config.bin"; http_uri; classtype:trojan-activity; sid:2500071; rev:1;)
+
+# ===================================================================
+# NJRAT
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET njRAT C2 Communication"; flow:established,to_server; content:"|00 00 00|"; depth:3; content:"ll"; distance:0; threshold:type threshold,track by_src,count 3,seconds 60; classtype:trojan-activity; sid:2500080; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET njRAT Keylogger Data"; flow:established,to_server; content:"kl"; depth:2; content:"|00|"; within:1; classtype:trojan-activity; sid:2500081; rev:1;)
+
+# ===================================================================
+# URSNIF / GOZI
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET Ursnif/Gozi Banking Trojan SSL"; flow:to_server,established; ssl_subject; content:"CN="; pcre:"/CN=[a-z]{5,10}\.(com|net|org)/"; classtype:trojan-activity; sid:2500090; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Ursnif HTTP POST"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; content:"soft="; http_client_body; content:"version="; http_client_body; classtype:trojan-activity; sid:2500091; rev:1;)
+
+# ===================================================================
+# ICEDID
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"BOTNET IcedID C2 Communication"; flow:established,to_server; content:"|16 03 03|"; depth:3; ssl_subject; content:"CN="; pcre:"/CN=[a-z0-9]{10,}\.com/"; classtype:trojan-activity; sid:2500100; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET IcedID Banking Module Request"; flow:established,to_server; content:"GET"; http_method; content:".dat"; http_uri; content:"Cookie|3a 20|_ga"; http_header; classtype:trojan-activity; sid:2500101; rev:1;)
+
+# ===================================================================
+# BUMBLEBEE LOADER
+# ===================================================================
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Bumblebee Loader C2 Communication"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; content:"Content-Type|3a 20|application/x-www-form-urlencoded"; http_header; content:"data="; http_client_body; pcre:"/data=[A-Za-z0-9+\/=]{100,}/"; classtype:trojan-activity; sid:2500110; rev:1;)
+
+# ===================================================================
+# SLIVER (C2 FRAMEWORK)
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Sliver C2 Framework Connection"; flow:to_server,established; content:"|16 03 03|"; depth:3; ssl_subject; content:"CN=multiplayer"; classtype:trojan-activity; sid:2500120; rev:1;)
+
+alert dns $HOME_NET any -> any any (msg:"BOTNET Sliver DNS C2 Channel"; dns.query; pcre:"/[0-9]{1,3}\.[a-z0-9]{20,}\./"; classtype:trojan-activity; sid:2500121; rev:1;)
+
+# ===================================================================
+# GENERIC BOTNET BEHAVIORS
+# ===================================================================
+
+# IRC-based Botnet Command Channel
+alert tcp $HOME_NET any -> $EXTERNAL_NET 6667 (msg:"BOTNET IRC Command Channel Connection"; flow:to_server,established; content:"NICK"; depth:4; content:"USER"; distance:0; classtype:trojan-activity; sid:2500200; rev:1;)
+
+# HTTP Botnet Check-in Pattern
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Generic HTTP Check-in"; flow:established,to_server; content:"POST"; http_method; content:"/"; http_uri; depth:1; urilen:<10; content:!"User-Agent"; http_header; threshold:type threshold,track by_src,count 3,seconds 300; classtype:trojan-activity; sid:2500201; rev:1;)
+
+# Excessive Failed Authentication (Botnet Spreading)
+alert tcp $HOME_NET any -> $HOME_NET any (msg:"BOTNET Credential Stuffing/Spreading Attempt"; flags:A; threshold:type threshold,track by_src,count 20,seconds 60; classtype:trojan-activity; sid:2500202; rev:1;)
+
+# Suspicious Periodic Connections
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Periodic Beacon Pattern"; flow:to_server,established; dsize:<200; threshold:type threshold,track by_src,count 10,seconds 600; classtype:trojan-activity; sid:2500203; rev:1;)
+
+# Fast Flux DNS (Botnet Infrastructure)
+alert dns any any -> any any (msg:"BOTNET Fast Flux DNS Pattern"; dns.query; threshold:type threshold,track by_src,count 50,seconds 60; classtype:trojan-activity; sid:2500204; rev:1;)
+
+# DGA (Domain Generation Algorithm) Patterns
+alert dns $HOME_NET any -> any any (msg:"BOTNET Possible DGA Domain Query"; dns.query; pcre:"/[a-z]{15,}\.(com|net|org|info|biz)$/"; classtype:trojan-activity; sid:2500205; rev:1;)
+
+# P2P Botnet Communication
+alert udp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET P2P Communication Pattern"; dsize:>100; threshold:type threshold,track by_src,count 50,seconds 300; classtype:trojan-activity; sid:2500206; rev:1;)
+
+# ===================================================================
+# CRYPTOCURRENCY MINING BOTNETS
+# ===================================================================
+
+# XMRig Miner (Monero)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET XMRig Cryptocurrency Miner"; flow:established,to_server; content:"{"; content:"\"method\""; distance:0; content:"\"mining.subscribe\""; distance:0; classtype:trojan-activity; sid:2500300; rev:1;)
+
+# Stratum Mining Protocol
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Stratum Mining Pool Connection"; flow:established,to_server; content:"{\"id\""; depth:6; content:"\"method\":\"mining."; distance:0; classtype:trojan-activity; sid:2500301; rev:1;)
+
+# Mining Pool Heartbeat
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BOTNET Mining Pool Keepalive"; flow:established,to_server; content:"{\"id\":"; content:"\"method\":\"keepalived\""; distance:0; classtype:trojan-activity; sid:2500302; rev:1;)
+
+# ===================================================================
+# DDOS BOTNETS
+# ===================================================================
+
+# BASHLITE/Gafgyt
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"BOTNET Bashlite/Gafgyt Infection Attempt"; flow:to_server,established; content:"cd /tmp"; nocase; content:"wget"; nocase; distance:0; classtype:trojan-activity; sid:2500400; rev:1;)
+
+# HOIC (High Orbit Ion Cannon)
+alert tcp $HOME_NET any -> any 80 (msg:"BOTNET HOIC DDoS Attack Tool"; flow:to_server,established; content:"GET"; http_method; content:"X-Requested-With|3a 20|"; http_header; content:"X-HTTP-Method-Override|3a 20|"; http_header; threshold:type threshold,track by_src,count 100,seconds 10; classtype:trojan-activity; sid:2500401; rev:1;)
+
+# ===================================================================
+# END OF BOTNET RULES
+# ===================================================================

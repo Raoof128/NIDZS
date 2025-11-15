@@ -1,0 +1,146 @@
+# Ransomware Detection Rules
+# Network IDS Project - Author: Raouf
+# Comprehensive ransomware family signatures
+
+# ===================================================================
+# WANNACRY FAMILY
+# ===================================================================
+
+alert tcp any any -> any 445 (msg:"RANSOMWARE WannaCry SMB EternalBlue Exploit Attempt"; flow:to_server,established; content:"|ff|SMB|72 00 00 00 00|"; depth:9; content:"|00 00 00 00 00 00 00 00 00 00 00 00 00 00|"; within:14; content:"|fe 53 4d 42 40|"; distance:0; classtype:ransomware; sid:2400001; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE WannaCry C2 Communication"; flow:established,to_server; content:"/tasksche.exe"; http_uri; content:"User-Agent|3a 20|Mozilla/"; http_header; classtype:ransomware; sid:2400002; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE WannaCry Kill Switch Domain"; flow:established,to_server; content:"iuqerfsodp9ifjaposdfjhgosurijfaewrwergwea.com"; http_host; classtype:ransomware; sid:2400003; rev:1;)
+
+# ===================================================================
+# RYUK FAMILY
+# ===================================================================
+
+alert tcp $HOME_NET any -> $HOME_NET 135 (msg:"RANSOMWARE Ryuk Lateral Movement via RPC"; flow:to_server,established; content:"|05 00 0b|"; depth:3; content:"|a0 01 00 00 00 00 00 00|"; within:20; classtype:ransomware; sid:2400010; rev:1;)
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Ryuk File Write RyukReadMe.txt"; flow:to_server,established; content:"RyukReadMe"; nocase; classtype:ransomware; sid:2400011; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Ryuk BTC Payment Check"; flow:established,to_server; content:"blockchain.info"; http_host; content:"/address/"; http_uri; classtype:ransomware; sid:2400012; rev:1;)
+
+# ===================================================================
+# LOCKBIT FAMILY
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE LockBit C2 Communication"; flow:established,to_server; content:"lockbit"; http_uri; nocase; content:"POST"; http_method; classtype:ransomware; sid:2400020; rev:1;)
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE LockBit Ransom Note Creation"; flow:to_server,established; content:"Restore-My-Files.txt"; nocase; classtype:ransomware; sid:2400021; rev:1;)
+
+alert dns $HOME_NET any -> any any (msg:"RANSOMWARE LockBit TOR Hidden Service DNS Query"; dns.query; content:".onion"; endswith; content:"lockbit"; nocase; classtype:ransomware; sid:2400022; rev:1;)
+
+# ===================================================================
+# REVIL / SODINOKIBI FAMILY
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"RANSOMWARE REvil/Sodinokibi C2 HTTPS"; flow:established,to_server; content:"|16 03|"; depth:2; content:"sodinokibi"; ssl_subject; classtype:ransomware; sid:2400030; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE REvil TOR Payment Site"; flow:established,to_server; content:".onion"; http_host; content:"/payment"; http_uri; classtype:ransomware; sid:2400031; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE REvil File Upload (Exfiltration)"; flow:established,to_server; content:"POST"; http_method; content:"multipart/form-data"; http_header; byte_test:4,>,5000000,0,string,dec,relative; classtype:ransomware; sid:2400032; rev:1;)
+
+# ===================================================================
+# MAZE RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Maze C2 Beacon"; flow:established,to_server; content:"/api/v1/"; http_uri; content:"User-Agent|3a 20|Mozilla/5.0"; http_header; content:"uid="; http_uri; pcre:"/uid=[a-f0-9]{32}/"; classtype:ransomware; sid:2400040; rev:1;)
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Maze File Encryption Activity"; flow:to_server,established; content:".maze"; nocase; classtype:ransomware; sid:2400041; rev:1;)
+
+# ===================================================================
+# CONTI RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Conti C2 Communication"; flow:established,to_server; content:"/api/v1/check"; http_uri; content:"botid="; http_client_body; classtype:ransomware; sid:2400050; rev:1;)
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Conti Ransom Note CONTI_README.txt"; flow:to_server,established; content:"CONTI_README"; nocase; classtype:ransomware; sid:2400051; rev:1;)
+
+alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"RANSOMWARE Conti Lateral Movement SMB"; flow:to_server,established; content:"|ff|SMB"; depth:8; threshold:type threshold,track by_src,count 10,seconds 60; classtype:ransomware; sid:2400052; rev:1;)
+
+# ===================================================================
+# DARKSIDE RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE DarkSide C2 Check-in"; flow:established,to_server; content:"/api/v2/"; http_uri; content:"agent_id="; http_client_body; content:"victim_id="; http_client_body; classtype:ransomware; sid:2400060; rev:1;)
+
+alert dns $HOME_NET any -> any any (msg:"RANSOMWARE DarkSide TOR Domain"; dns.query; content:"darksidedxcftmqa.onion"; nocase; classtype:ransomware; sid:2400061; rev:1;)
+
+# ===================================================================
+# BLACKMATTER RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE BlackMatter C2 Communication"; flow:established,to_server; content:"/rest/"; http_uri; content:"session="; http_uri; pcre:"/session=[a-f0-9]{64}/"; classtype:ransomware; sid:2400070; rev:1;)
+
+# ===================================================================
+# HIVE RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"RANSOMWARE Hive TLS Certificate"; flow:to_server,established; ssl_subject; content:"CN=Hive"; classtype:ransomware; sid:2400080; rev:1;)
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Hive Ransom Note HOW_TO_DECRYPT.txt"; flow:to_server,established; content:"HOW_TO_DECRYPT"; nocase; classtype:ransomware; sid:2400081; rev:1;)
+
+# ===================================================================
+# BABUK RANSOMWARE
+# ===================================================================
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Babuk C2 Communication"; flow:established,to_server; content:"/upload"; http_uri; content:"babuk"; http_client_body; nocase; classtype:ransomware; sid:2400090; rev:1;)
+
+# ===================================================================
+# PHOBOS RANSOMWARE
+# ===================================================================
+
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Phobos File Extension .phobos"; flow:to_server,established; content:".phobos"; nocase; classtype:ransomware; sid:2400100; rev:1;)
+
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Phobos Email Exfiltration"; flow:established,to_server; content:"smtp"; nocase; content:"phobos"; http_client_body; nocase; classtype:ransomware; sid:2400101; rev:1;)
+
+# ===================================================================
+# GENERIC RANSOMWARE BEHAVIORS
+# ===================================================================
+
+# Rapid File Deletion/Modification
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Possible Mass File Encryption (SMB)"; flow:to_server,established; content:"|ff|SMB"; depth:8; content:"|2f 00|"; within:100; threshold:type threshold,track by_src,count 50,seconds 10; classtype:ransomware; sid:2400200; rev:1;)
+
+# Shadow Copy Deletion (vssadmin)
+alert tcp $HOME_NET any -> $HOME_NET 135 (msg:"RANSOMWARE Shadow Copy Deletion Attempt"; flow:to_server,established; content:"vssadmin"; nocase; content:"delete"; nocase; distance:0; classtype:ransomware; sid:2400201; rev:1;)
+
+# Cryptocurrency Wallet in Ransom Note
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"RANSOMWARE Bitcoin Wallet in Communication"; flow:established,to_server; content:"1"; depth:1; pcre:"/1[A-HJ-NP-Za-km-z1-9]{25,34}/"; classtype:ransomware; sid:2400202; rev:1;)
+
+# TOR Network Access (Common for Ransom Payment)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE TOR Network Access for Payment"; flow:established,to_server; content:".onion"; http_host; content:"payment"; http_uri; nocase; classtype:ransomware; sid:2400203; rev:1;)
+
+# Ransom Note File Creation Patterns
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Generic Ransom Note Creation"; flow:to_server,established; pcre:"/(READ_ME|HOW_TO|DECRYPT|RESTORE|RECOVERY|FILES_ENCRYPTED)/i"; classtype:ransomware; sid:2400204; rev:1;)
+
+# Encryption Tool User-Agent
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Suspicious Encryption Tool User-Agent"; flow:established,to_server; content:"User-Agent|3a 20|"; http_header; pcre:"/User-Agent\x3a\x20(AES|RSA|Cipher|Crypt)/i"; classtype:ransomware; sid:2400205; rev:1;)
+
+# Monero Wallet Communication
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"RANSOMWARE Monero Wallet Communication"; flow:established,to_server; content:"4"; depth:1; pcre:"/4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}/"; classtype:ransomware; sid:2400206; rev:1;)
+
+# ===================================================================
+# ANTI-FORENSICS / CLEANUP
+# ===================================================================
+
+# Event Log Clearing
+alert tcp $HOME_NET any -> $HOME_NET 135 (msg:"RANSOMWARE Event Log Clearing via RPC"; flow:to_server,established; content:"EventLog"; nocase; content:"Clear"; nocase; distance:0; classtype:ransomware; sid:2400300; rev:1;)
+
+# Backup Deletion
+alert smb any any -> $HOME_NET any (msg:"RANSOMWARE Backup File Deletion"; flow:to_server,established; pcre:"/\.(bak|backup|vhd|vhdx|vmdk|pst)/i"; content:"|00 00 00 40|"; classtype:ransomware; sid:2400301; rev:1;)
+
+# ===================================================================
+# RANSOMWARE-AS-A-SERVICE (RaaS)
+# ===================================================================
+
+# RaaS Affiliate Panel Access
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"RANSOMWARE RaaS Affiliate Panel Access"; flow:established,to_server; content:"/affiliate/"; http_uri; content:"login"; http_client_body; classtype:ransomware; sid:2400400; rev:1;)
+
+# RaaS Builder Download
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"RANSOMWARE RaaS Builder Download"; flow:established,to_server; content:"/build"; http_uri; content:"config="; http_uri; content:".exe"; http_uri; classtype:ransomware; sid:2400401; rev:1;)
+
+# ===================================================================
+# END OF RANSOMWARE RULES
+# ===================================================================

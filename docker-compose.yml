@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # =========================================
+  # ELASTICSEARCH - Log Storage & Search
+  # =========================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: ids-elasticsearch
+    hostname: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=network-ids-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ELASTIC_PASSWORD=changeme
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./elasticsearch-kibana/data/elasticsearch:/usr/share/elasticsearch/data
+      - ./elasticsearch-kibana/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+    networks:
+      - ids-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:changeme http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # =========================================
+  # KIBANA - Visualization & Threat Hunting
+  # =========================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: ids-kibana
+    hostname: kibana
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+      - xpack.security.enabled=true
+      - xpack.encryptedSavedObjects.encryptionKey=fhjskloppd678ehkdfdlliverpoolfcr32
+    volumes:
+      - ./elasticsearch-kibana/data/kibana:/usr/share/kibana/data
+      - ./elasticsearch-kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - ids-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"state\":\"green\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # =========================================
+  # ZEEK - Protocol Analysis & Metadata
+  # =========================================
+  zeek:
+    build:
+      context: ./configs/zeek-config
+      dockerfile: Dockerfile
+    image: ids-zeek:latest
+    container_name: ids-zeek
+    hostname: zeek
+    network_mode: host  # Required for packet capture
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./logs/zeek:/opt/zeek/logs
+      - ./zeek-scripts:/opt/zeek/share/zeek/site/custom:ro
+      - ./configs/zeek-config:/opt/zeek/etc:ro
+      - ./sample-traffic:/pcaps:ro
+    environment:
+      - ZEEK_INTERFACE=any  # Change to specific interface (eth0, en0, etc.)
+      - ZEEK_SCRIPTS_DIR=/opt/zeek/share/zeek/site/custom
+    command: >
+      bash -c "
+      zeekctl deploy &&
+      tail -f /opt/zeek/logs/current/*.log
+      "
+    restart: unless-stopped
+
+  # =========================================
+  # SURICATA - Signature-Based IDS
+  # =========================================
+  suricata:
+    build:
+      context: ./configs/suricata-config
+      dockerfile: Dockerfile
+    image: ids-suricata:latest
+    container_name: ids-suricata
+    hostname: suricata
+    network_mode: host  # Required for packet capture
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    volumes:
+      - ./logs/suricata:/var/log/suricata
+      - ./suricata-rules:/etc/suricata/rules:ro
+      - ./configs/suricata-config/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./sample-traffic:/pcaps:ro
+    environment:
+      - SURICATA_INTERFACE=any  # Change to specific interface
+    command: >
+      bash -c "
+      suricata-update &&
+      suricata -c /etc/suricata/suricata.yaml -i any --init-errors-fatal
+      "
+    restart: unless-stopped
+
+  # =========================================
+  # FILEBEAT - Log Shipping to Elasticsearch
+  # =========================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: ids-filebeat
+    hostname: filebeat
+    user: root
+    volumes:
+      - ./elasticsearch-kibana/filebeat-config.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs/zeek:/var/log/zeek:ro
+      - ./logs/suricata:/var/log/suricata:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./elasticsearch-kibana/data/filebeat:/usr/share/filebeat/data
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+      - KIBANA_HOST=http://kibana:5601
+    networks:
+      - ids-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      zeek:
+        condition: service_started
+      suricata:
+        condition: service_started
+    command: >
+      bash -c "
+      filebeat setup -e --index-management --dashboards &&
+      filebeat -e -strict.perms=false
+      "
+    restart: unless-stopped
+
+# =========================================
+# NETWORKS
+# =========================================
+networks:
+  ids-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# =========================================
+# VOLUMES (for persistence)
+# =========================================
+volumes:
+  elasticsearch-data:
+  kibana-data:
+  filebeat-data:

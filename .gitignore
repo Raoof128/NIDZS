@@ -1,0 +1,106 @@
+# Network IDS - Git Ignore File
+
+# ===================================
+# Data Directories
+# ===================================
+elasticsearch-kibana/data/
+logs/
+*.log
+
+# ===================================
+# PCAP Files
+# ===================================
+*.pcap
+*.pcapng
+sample-traffic/*.pcap
+sample-traffic/*.pcapng
+
+# ===================================
+# Docker
+# ===================================
+.env
+*.env.local
+
+# ===================================
+# Elasticsearch
+# ===================================
+elasticsearch-kibana/data/elasticsearch/
+elasticsearch-kibana/data/kibana/
+elasticsearch-kibana/data/filebeat/
+
+# ===================================
+# Temporary Files
+# ===================================
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===================================
+# IDE / Editor
+# ===================================
+.vscode/
+.idea/
+*.sublime-*
+.project
+.settings/
+
+# ===================================
+# Python
+# ===================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# ===================================
+# Jupyter Notebooks
+# ===================================
+.ipynb_checkpoints
+
+# ===================================
+# Credentials & Secrets
+# ===================================
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+# ===================================
+# Backups
+# ===================================
+*.bak
+*.backup
+backup/
+
+# ===================================
+# Reports & Exports
+# ===================================
+reports/*.pdf
+exports/
+
+# ===================================
+# OS Generated
+# ===================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===================================
+# Keep These Directories
+# ===================================
+!sample-traffic/README.md
+!logs/README.md

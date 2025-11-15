@@ -1,0 +1,45 @@
+# Custom Detection Rules
+# Network IDS Project - Author: Raouf
+# Project-specific and environment-tuned detections
+
+# ===================================================================
+# CUSTOM BEHAVIORAL DETECTIONS
+# ===================================================================
+
+# Unusual Outbound SMTP from Non-Mail Servers
+alert tcp $HOME_NET !25 -> $EXTERNAL_NET 25 (msg:"CUSTOM Unusual Outbound SMTP from Non-Standard Port"; flow:to_server,established; content:"EHLO"; depth:4; threshold:type threshold,track by_src,count 5,seconds 300; classtype:policy-violation; sid:2700001; rev:1;)
+
+# Internal Port Scanning Detection
+alert tcp $HOME_NET any -> $HOME_NET any (msg:"CUSTOM Internal Network Port Scan"; flags:S; threshold:type threshold,track by_src,count 30,seconds 60; classtype:attempted-recon; sid:2700002; rev:1;)
+
+# Large Data Transfer to Cloud Storage
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"CUSTOM Large Upload to Cloud Storage"; flow:established,to_server; content:"POST"; http_method; pcre:"/Host\x3a\x20.*(dropbox|drive\.google|onedrive|box\.com)/i"; byte_test:4,>,50000000,0,string,dec,relative; classtype:policy-violation; sid:2700003; rev:1;)
+
+# ===================================================================
+# CUSTOM POLICY VIOLATIONS
+# ===================================================================
+
+# TOR Network Access
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"CUSTOM TOR Network Connection Attempt"; flow:to_server,established; content:".onion"; classtype:policy-violation; sid:2700010; rev:1;)
+
+# VPN/Proxy Service Access
+alert dns $HOME_NET any -> any any (msg:"CUSTOM VPN/Proxy Service DNS Query"; dns.query; pcre:"/(vpn|proxy|hide|anonymous)/i"; classtype:policy-violation; sid:2700011; rev:1;)
+
+# Cryptocurrency Transaction Sites
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"CUSTOM Cryptocurrency Exchange Access"; flow:established,to_server; pcre:"/Host\x3a\x20.*(coinbase|binance|kraken|bitfinex)/i"; classtype:policy-violation; sid:2700012; rev:1;)
+
+# ===================================================================
+# TUNED DETECTION RULES (Environment-Specific)
+# ===================================================================
+
+# Adjust thresholds based on your environment
+
+# Multiple Failed RDP Attempts
+alert tcp $HOME_NET any -> $HOME_NET 3389 (msg:"CUSTOM Multiple Failed RDP Attempts"; flow:to_server,established; threshold:type threshold,track by_src,count 5,seconds 300; classtype:attempted-user; sid:2700020; rev:1;)
+
+# Multiple Failed SSH Attempts
+alert tcp $HOME_NET any -> $HOME_NET 22 (msg:"CUSTOM Multiple Failed SSH Attempts"; flow:to_server,established; content:"SSH"; depth:3; threshold:type threshold,track by_src,count 10,seconds 300; classtype:attempted-user; sid:2700021; rev:1;)
+
+# ===================================================================
+# END OF CUSTOM RULES
+# ===================================================================

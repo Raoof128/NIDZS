@@ -1,0 +1,379 @@
+# Suricata Configuration
+# Network IDS - Optimized for signature-based detection
+
+%YAML 1.1
+---
+
+# ========================================
+# Variables
+# ========================================
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8,172.16.0.0/12,192.168.0.0/16]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+    HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DC_SERVERS: "$HOME_NET"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$HOME_NET"
+    MODBUS_CLIENT: "$HOME_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$HOME_NET"
+    ENIP_SERVER: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: 1521
+    SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: 21
+    GENEVE_PORTS: 6081
+    VXLAN_PORTS: 4789
+    TEREDO_PORTS: 3544
+
+# ========================================
+# Outputs
+# ========================================
+outputs:
+  # EVE JSON log (primary output for Filebeat)
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+
+      types:
+        - alert:
+            metadata: yes
+            tagged-packets: yes
+            xff:
+              enabled: yes
+              mode: extra-data
+              deployment: reverse
+              header: X-Forwarded-For
+
+        - anomaly:
+            enabled: yes
+            types:
+              decode: yes
+              stream: yes
+              applayer: yes
+
+        - http:
+            extended: yes
+            custom: [Accept-Encoding, Accept-Language, Authorization]
+
+        - dns:
+            query: yes
+            answer: yes
+
+        - tls:
+            extended: yes
+            session-resumption: yes
+            custom: [subject, issuer, serial, fingerprint]
+
+        - files:
+            force-magic: yes
+            force-hash: [md5, sha1, sha256]
+
+        - smtp:
+            extended: yes
+
+        - ssh:
+            enabled: yes
+
+        - flow:
+            enabled: no  # Disable to reduce log volume
+
+        - netflow:
+            enabled: no
+
+        - stats:
+            enabled: yes
+            totals: yes
+            threads: yes
+
+        - dhcp:
+            enabled: yes
+            extended: yes
+
+        - smb:
+            enabled: yes
+
+        - rdp:
+            enabled: yes
+
+  # Fast log (alert summary)
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+
+  # Stats log
+  - stats:
+      enabled: yes
+      filename: stats.log
+      append: yes
+      totals: yes
+      threads: yes
+
+# ========================================
+# Logging
+# ========================================
+logging:
+  default-log-level: notice
+
+  outputs:
+    - console:
+        enabled: yes
+
+    - file:
+        enabled: yes
+        level: info
+        filename: suricata.log
+
+    - syslog:
+        enabled: no
+
+# ========================================
+# AF_PACKET Configuration
+# ========================================
+af-packet:
+  - interface: any
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    ring-size: 2048
+    block-size: 32768
+    buffer-size: 32768
+
+# ========================================
+# Threading
+# ========================================
+threading:
+  set-cpu-affinity: no
+
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [ 0 ]
+
+    - receive-cpu-set:
+        cpu: [ 0 ]
+
+    - worker-cpu-set:
+        cpu: [ 1, 2, 3, 4 ]
+
+  detect-thread-ratio: 1.0
+
+# ========================================
+# Packet Acquisition
+# ========================================
+max-pending-packets: 65535
+
+# ========================================
+# Detection Engine
+# ========================================
+detect:
+  profile: high
+  custom-values:
+    toclient-groups: 3
+    toserver-groups: 25
+
+  sgh-mpm-context: auto
+  inspection-recursion-limit: 3000
+
+  prefilter:
+    default: mpm
+
+  grouping:
+
+  profiling:
+    grouping:
+      dump-to-disk: no
+      include-rules: no
+      include-mpm-stats: no
+
+# ========================================
+# Stream Engine
+# ========================================
+stream:
+  memcap: 64mb
+  checksum-validation: yes
+  inline: auto
+
+  reassembly:
+    memcap: 256mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+    randomize-chunk-size: yes
+
+# ========================================
+# Application Layer
+# ========================================
+app-layer:
+  protocols:
+    http:
+      enabled: yes
+      memcap: 128mb
+
+    tls:
+      enabled: yes
+      detection-ports:
+        dp: 443
+
+      ja3-fingerprints: yes
+
+    smb:
+      enabled: yes
+      detection-ports:
+        dp: 139, 445
+
+    ssh:
+      enabled: yes
+
+    dns:
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes
+
+    smtp:
+      enabled: yes
+      raw-extraction: no
+      mime:
+        decode-mime: yes
+        decode-base64: yes
+        decode-quoted-printable: yes
+        header-value-depth: 2000
+        extract-urls: yes
+        body-md5: yes
+
+    rdp:
+      enabled: yes
+
+    ftp:
+      enabled: yes
+
+    nfs:
+      enabled: yes
+
+    tftp:
+      enabled: yes
+
+    ikev2:
+      enabled: yes
+
+# ========================================
+# Rules Configuration
+# ========================================
+default-rule-path: /var/lib/suricata/rules
+
+rule-files:
+  - suricata.rules
+  - /etc/suricata/rules/emerging_threats.rules
+  - /etc/suricata/rules/ransomware_signatures.rules
+  - /etc/suricata/rules/botnet_detection.rules
+  - /etc/suricata/rules/protocol_exploits.rules
+  - /etc/suricata/rules/custom_detections.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+threshold-file: /etc/suricata/threshold.config
+
+# ========================================
+# Performance
+# ========================================
+profiling:
+  rules:
+    enabled: yes
+    filename: rule_perf.log
+    append: yes
+
+    limit: 100
+
+    json: yes
+
+  keywords:
+    enabled: yes
+    filename: keyword_perf.log
+    append: yes
+
+  prefilter:
+    enabled: yes
+    filename: prefilter_perf.log
+    append: yes
+
+  rulegroups:
+    enabled: yes
+    filename: rule_group_perf.log
+    append: yes
+
+  packets:
+    enabled: yes
+    filename: packet_stats.log
+    append: yes
+    csv:
+      enabled: no
+
+# ========================================
+# Host Table
+# ========================================
+host:
+  hash-size: 4096
+  prealloc: 1000
+  memcap: 32mb
+
+# ========================================
+# Decode
+# ========================================
+decoder:
+  teredo:
+    enabled: yes
+
+  vxlan:
+    enabled: yes
+
+# ========================================
+# Engine Analysis
+# ========================================
+engine-analysis:
+  rules-fast-pattern: yes
+  rules: yes
+
+# ========================================
+# Defragmentation
+# ========================================
+defrag:
+  memcap: 32mb
+  hash-size: 65536
+  trackers: 65535
+  max-frags: 65535
+  prealloc: yes
+  timeout: 60
+
+# ========================================
+# Host Mode
+# ========================================
+host-mode: auto
+
+# ========================================
+# Unix Socket
+# ========================================
+unix-command:
+  enabled: yes
+
+# ========================================
+# Default Log Directory
+# ========================================
+default-log-dir: /var/log/suricata/
