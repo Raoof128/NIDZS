@@ -7,10 +7,12 @@
 
 **A production-grade multi-layered Network Intrusion Detection System combining protocol analysis, signature-based detection, and threat hunting capabilities.**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-passing-success.svg)](scripts/test-detection.sh)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-📖 **[Quick Start](QUICKSTART.md)** | **[Setup Guide](SETUP.md)** | **[Architecture](ARCHITECTURE.md)** | **[Changelog](CHANGELOG.md)** | **[Dashboards](elasticsearch-kibana/kibana-dashboards/README.md)** | **[Performance](performance-metrics/README.md)**
+📖 **[Quick Start](QUICKSTART.md)** | **[Setup](SETUP.md)** | **[Architecture](ARCHITECTURE.md)** | **[Changelog](CHANGELOG.md)** | **[Dashboards](elasticsearch-kibana/kibana-dashboards/README.md)** | **[Performance](performance-metrics/README.md)** | **[Contributing](CONTRIBUTING.md)** | **[Security](SECURITY.md)**
 
 ---
 
@@ -336,13 +338,26 @@ network-ids-zeek-suricata/
 
 ## 🤝 Contributing
 
-This is a portfolio project, but suggestions welcome! To contribute:
+Contributions are welcome! This project follows standard open source practices.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-detection`)
-3. Commit changes with clear messages
-4. Test with sample traffic
-5. Submit a pull request
+**Quick Start:**
+1. Read the [Contributing Guidelines](CONTRIBUTING.md)
+2. Check [existing issues](https://github.com/Raoof128/NIDZS/issues)
+3. Fork the repository
+4. Create a feature branch (`git checkout -b feature/new-detection`)
+5. Make your changes and test thoroughly
+6. Submit a pull request
+
+**Ways to Contribute:**
+- 🐛 Report bugs
+- ✨ Suggest new features or detections
+- 📚 Improve documentation
+- 🧪 Add test cases
+- ⚡ Optimize performance
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines, code style, and commit conventions.
+
+**Security:** Please review our [Security Policy](SECURITY.md) for reporting vulnerabilities.
 
 ---
 
@@ -414,4 +429,4 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 **⭐ If this project helps your learning or career, please star the repository!**
 
-*Last Updated: November 2025*
+*Last Updated: November 2024 | Version: 1.2.0*
