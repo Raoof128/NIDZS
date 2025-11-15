@@ -4,7 +4,8 @@
 # Data Directories
 # ===================================
 elasticsearch-kibana/data/
-logs/
+logs/*
+!logs/README.md
 *.log
 
 # ===================================
